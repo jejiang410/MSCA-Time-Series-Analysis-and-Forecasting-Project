@@ -26,12 +26,20 @@ Final Presentation: This folder contains the final presentation
 In this analysis, we used different approaches:
 
 Univariate Analysis
+
 Seasonal Naive Method - setting up baseline performance
+
 Holt-Winters Method
+
 sARIMA
+
 Prophet
 
+
 Multivariate Analysis
+
 Regression with Arima Errors
+
 Vector Autoregression (VAR)
+
 Long Short-Term Memory (LSTM)
