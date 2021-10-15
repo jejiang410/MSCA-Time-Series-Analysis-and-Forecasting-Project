@@ -1,0 +1,70 @@
+---
+title: "Final Time Series"
+author: "Ali Mansour"
+date: "8/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r,message=FALSE, warning=FALSE}
+rm(list = ls())
+
+#load relevant libraries 
+library(tseries)
+library(fpp)
+library(ggplot2)
+library(forecast)
+library(readxl)
+library(dplyr)
+```
+
+```{r,message=FALSE, warning=FALSE}
+# set working directory
+setwd('~/Documents/MsBMI/time_Series/Final/thai_tourism_data/') 
+```
+
+```{r,message=FALSE, warning=FALSE}
+#load data
+data<-read.csv('thaitourism2.csv') # load tourism data 
+data2<-read_xlsx('currency_and_temperature_data.xlsx') # load temo and currency data 
+
+#filter for usa data only
+data.usa<-filter(data,nationality=='USA') # filter usa as country of interst 
+
+# convert data to time series data 
+ts<-ts(data.usa$tourists,start=c(2010,1), frequency = 12) 
+tsdisplay(ts)
+ts.currency.temp<-ts(data2[,3:4],start=c(2010,1),frequency=12)
+```
+
+```{r,message=FALSE, warning=FALSE}
+# split to training and testing data 
+tourism.usadata.train<- window(ts,start=c(2010,1), end=c(2015,12))
+tourism.usadata.test<- window(ts,start=c(2016,1), end=c(2016,12))
+currency.temp.train<- window(ts.currency.temp,start=c(2010,1), end=c(2015,12))
+currency.temp.test<-  window(ts.currency.temp,start=c(2016,1), end=c(2016,12))
+```
+
+```{r,message=FALSE, warning=FALSE}
+# model fit 
+fit<-auto.arima(tourism.usadata.train,xreg = currency.temp.train,lambda = 0.627)
+
+# check residuals 
+checkresiduals(fit)
+
+#forecast 
+forecast<-forecast(fit,xreg = currency.temp.test)
+autoplot(tourism.usadata.train) +
+  autolayer(forecast, series="Model") +
+  autolayer(tourism.usadata.test, series="real") +
+  ggtitle("Model to Reality") +
+  xlab("Year") + ylab("")
+
+#check accuracy
+accuracy(forecast)
+```

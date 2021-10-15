@@ -1,0 +1,76 @@
+---
+title: "Final Project"
+author: Zheyu Han
+date: "8/14/2021"
+output: html_document
+---
+### Set up
+```{r}
+suppressMessages(library(TSA))
+suppressMessages(library(ggplot2))
+suppressMessages(library(urca))
+suppressMessages(library(forecast))
+# suppressMessages(library(reshape))
+suppressMessages(library(tseries))
+library(Metrics)
+```
+
+### 1. Load Data and select nationality = "USA"
+1). Load dataset
+```{r}
+# dataPath1 <- "C:/Users/jiang/Desktop/Dataset/Time_Series/Final_Project/thaitourism2"
+thai <- read.csv("thaitourism2.csv")
+head(thai)
+```
+```{r}
+# No missing value
+sum(is.na(thai))
+```
+
+2). Subset the data of USA
+```{r}
+thai_sub <- thai[c('year', 'month', 'nationality', 'tourists')]
+usa_all <- subset(thai_sub, nationality == 'USA')
+head(usa_all)
+```
+
+### 2. Split train and test set
+
+1). Split train and test set
+```{r}
+usa_raw <- sapply(usa_all['tourists'], as.numeric)
+usa <- ts(usa_raw, start = c(2010,1), frequency = 12)
+
+train <- ts(usa[1:72], start = c(2010,1), frequency = 12)
+test <- ts(usa[73:84], start = c(2016,1), frequency = 12)
+```
+
+2). Plot the training data
+```{r}
+tsdisplay(train, main = "Number of the American tourists visiting thailand", xlab = "Year", ylab = "Number of tourists")
+```
+```{r}
+lda <- BoxCox.lambda(train)
+lda
+```
+
+# 5) baseline models
+```{r}
+h <- 12
+Model_Mean <- meanf(train, h, lambda = lda) 
+Model_Naive <- naive(train, h, lambda = lda) 
+Model_SNaive <- snaive(train, h, lambda = lda)
+Model_Drift <- rwf(train, h, drift=TRUE, lambda = lda)
+autoplot(usa) +
+  autolayer(Model_Mean$mean, series="Mean") +
+  autolayer(Model_Naive$mean, series="Naïve") +
+  autolayer(Model_SNaive$mean, series="Seasonal naïve") +
+  autolayer(Model_Drift$mean, series="Drift") +
+  ggtitle("Forecasts for monthly Thailand visitors") + ylab("Visitors")
+```
+```{r}
+rmse(Model_SNaive$mean, test)
+mape(Model_SNaive$mean, test)
+mae(Model_SNaive$mean, test)
+```
+

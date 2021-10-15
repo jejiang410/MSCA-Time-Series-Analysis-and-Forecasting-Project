@@ -1,0 +1,99 @@
+---
+title: "Thai_tourism_Jane"
+author: "Zheyu Han"
+date: "8/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+suppressMessages(library(TSA))
+suppressMessages(library(ggplot2))
+suppressMessages(library(urca))
+suppressMessages(library(forecast))
+# suppressMessages(library(reshape))
+suppressMessages(library(tseries))
+library(Metrics)
+```
+
+## 1. Load Data and select nationality = "USA"
+1). Load dataset
+
+```{r}
+thai <- read.csv("thaitourism2.csv")
+thai
+```
+
+
+```{r}
+thai_sub <- thai[c('year', 'month', 'nationality', 'tourists')]
+usa_all <- subset(thai_sub, nationality == 'USA')
+head(usa_all)
+```
+```{r}
+# usa_raw <- sapply(usa_all['tourists'], as.numeric)
+usa <- ts(usa_all$tourists, start = c(2010,1), frequency = 12)
+train <- ts(usa[1:72], start = c(2010,1), frequency = 12)
+test <- ts(usa[73:84], start = c(2016,1), frequency = 12)
+```
+
+#### Add one columne
+```{r}
+day <- rep(1,length(usa_all$year))
+usa_all['day'] <- day
+```
+
+```{r}
+head(usa_all)
+```
+
+```{r}
+usa_all['date'] <- as.Date(with(usa_all, paste(year, month, day, sep="-")), "%Y-%m-%d")
+head(usa_all)
+```
+```{r}
+df <- usa_all[, c('date', 'tourists')]
+names(df) <- c('ds', 'y')
+train_prophet <- df[1:72, ]
+```
+
+
+
+```{r}
+m <- prophet(train_prophet, yearly.seasonality = TRUE)
+future <- make_future_dataframe(m=m,periods=12, freq = 'm')
+```
+
+
+```{r}
+forecast <- predict(m,future)
+prophet_plot_components(m, forecast)
+
+```
+```{r}
+forecast
+```
+
+```{r}
+forecast_prophet <- ts(forecast[73:84, ]$yhat, start = c(2016,1), frequency = 12)
+```
+
+```{r}
+forecast_whole <- ts(forecast$yhat, start = c(2010,1), frequency = 12)
+```
+
+```{r}
+autoplot(usa) + 
+  autolayer(forecast_prophet, series = "forecasted with Prophet") +
+  ggtitle("Forecasts for monthly number of tourists in Thailand - Prophet") +
+  xlab("Year") + ylab("Number of tourists")
+```
+```{r}
+rmse(df[73:84, ]$y, forecast[73:84, ]$yhat)
+mae(df[73:84, ]$y, forecast[73:84, ]$yhat)
+mape(df[73:84, ]$y, forecast[73:84, ]$yhat)
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

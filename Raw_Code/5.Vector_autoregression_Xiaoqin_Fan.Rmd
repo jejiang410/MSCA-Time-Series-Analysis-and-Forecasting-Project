@@ -1,0 +1,322 @@
+---
+title: "vAR"
+author: "XiaoqinFan"
+date: "8/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# Load libraries
+#install.packages("lpirfs")
+library(openxlsx)
+library(fpp)
+library(tseries)
+library(TSA)
+library(forecast)
+library(ggplot2)
+library(openxlsx)
+library(vars)
+#library(tsm)
+library(mFilter)
+library(lpirfs)
+require(forecast)
+
+# Read files
+US <- read.xlsx('C:/Users/mike2/Downloads/USA.xlsx')
+Train <- read.xlsx('C:/Users/mike2/Downloads/USA_Train.xlsx')
+Test <-read.xlsx('C:/Users/mike2/Downloads/USA_Test.xlsx')
+
+plot(Train)
+
+Train <- sapply(Train, as.numeric)
+Train <- ts(Train, start = c(2010,1), frequency = 12)
+
+Test <- sapply(Test, as.numeric)
+Test <- ts(Test, start = c(2016,1), frequency = 12)
+
+plot(Train)
+
+tsdisplay(Train, main = "Train data", xlab = "Year", ylab = "Number of tourists")
+
+```
+
+```{r}
+# Check Unit root 
+library(tseries)
+p1 <- round(adf.test(Train[,1])$p.value,3)
+p2 <- round(adf.test(Train[，2])$p.value,3)
+p3 <- round(adf.test(Train[,3])$p.value,3)
+p_df <- data.frame(matrix(c(p1,p2,p3),nrow=1))
+colnames(p_df) <- c("A","B","C")
+rownames(p_df) <- c("Unit root test p value")
+p_df
+# B average exchange rate is not stationary
+
+# Further check
+
+library(MTS)
+mq(Train, lag=12)
+# The null hypothesis is rejected by not exceeding the blue dotted line.  Therefore, the sequence is not a white noise sequence and has analytical value.  
+```
+
+```{r}
+# var.aic <- VAR(Train, type = "none", lag.max = 12, ic = "AIC")
+# summary(var.aic)
+require(vars)
+VARselect(Train)
+# AIC: vAR(8)
+# BIC: VAR(1)
+```
+
+```{r}
+#var(8)
+#require(vars)
+# var.fit.8 = VAR(Train, p = 8,type = "both",season = 12) 
+ 
+var.fit.8 = vars::VAR(Train,p=8)
+
+summary(var.fit.8)
+serial.test(var.fit.8,lags.pt = 10 , type = "PT.asymptotic")
+# The null hypothesis of no autocorrelation is rejected since the p-value is (By VAR:6.788e-05)(By TS 0.001894) smaller than the significance level of 0.05.
+```
+
+
+```{r}
+# var(1)
+#var.fit.1 = VAR(Train, p = 1, type = "both",season = 12) 
+var.fit.1 = vars::VAR(Train,p=1)
+
+summary(var.fit.1)
+
+serial <- serial.test(var.fit.1,lags.pt = 10 , type = "PT.asymptotic")
+serial
+
+coef(var.fit.1)
+plot(var.fit.1)
+
+plot(serial, names = "tourist")
+# The null hypothesis of no autocorrelation is accepted since the p-value is 0.3446(#var.fit.1 = VAR(Train, p = 1, type = "both",season = 12)) larger than the significance level of 0.05.
+
+# The null hypothesis of no autocorrelation is rejected since the p-value is p-value = 1.123e-05 which is much smaller than the significance level of 0.05.
+
+# One assumption is that the residuals should, as much as possible, be non-autocorrelated. This is again on our assumption that the residuals are white noise and thus uncorrelated with the previous periods. 
+
+#get_var_lagcrit(Train, specs = NULL)
+
+```
+
+
+```{r}
+
+### From the graph we see that variance change overtime so we do need transformations
+lambda <- BoxCox.lambda(Train)
+lambda
+
+# do transformation based on the best lambda 
+Train <- BoxCox(Train, lambda = lambda)
+tsdisplay(Train)
+
+```
+
+
+
+```{r}
+# Apply difference 
+Train_seadiff <- diff(Train, lag = 12)
+tsdisplay((Train_seadiff))
+
+kpss.test(Train_seadiff[,1])
+kpss.test(Train_seadiff[,2])
+kpss.test(Train_seadiff[,3])
+
+
+#Non-seasonal
+Train_sea_diff <- diff(Train_seadiff, lag = 1)
+tsdisplay(Train_sea_diff)
+ 
+kpss.test(Train_sea_diff[,1])
+kpss.test(Train_sea_diff[,2])
+kpss.test(Train_sea_diff[,3])
+
+
+adf.test(Train_sea_diff[,1])
+adf.test(Train_sea_diff[,2])
+adf.test(Train_sea_diff[,2])
+
+
+# The p-value of KPSS test is larger than the significant level of 0.05. We have to accept the null hypothesis and thus conclude that the data is stationary. 
+
+season.diff1 = diff(Train,lag = 12, difference = 1)
+plot(season.diff1)
+qqnorm(season.diff1, pch = 1, frame = FALSE)
+qqline(season.diff1, col = "steelblue", lwd = 2)
+acf(season.diff1,lag.max = 36)
+#pacf(season.diff1,lag.max = 36)
+
+```
+
+```{r}
+VARselect(season.diff1)
+
+#var.fit.10 = VAR(Train, p = 10,type = "both",season = 12) 
+ 
+var.fit.10 = vars::VAR(season.diff1,p=10)
+summary(var.fit.10)
+serial.test(var.fit.10,lags.pt = 10 , type = "PT.asymptotic")
+# p-value < 2.2e-16
+
+#var.fit.1 = vars::VAR(season.diff1,p=1)
+
+summary(var.fit.1)
+plot(var.fit.1)
+
+serial <- serial.test(var.fit.1,lags.pt = 10 , type = "PT.asymptotic")
+serial
+
+# p-value = 0.616
+```
+
+
+```{r}
+# To interpret these statistics note that a p-value that is greater than 5% would generally indicate that there is an absence of serial correlation. To test for heteroscedasticity in the residuals we can perform a multivariate ARCH Lagrange-Multiplier test.
+arch <- arch.test(var.fit.1, lags.multi = 12, multivariate.only = TRUE)
+arch
+# Once again the p-value that is greater than 5% would indicate the absence of heteroscedasticity. To consider the distribution of the residuals, we could apply a normality test.
+```
+
+```{r}
+# normality test on residuals
+norm <- normality.test(var.fit.1, multivariate.only = TRUE)
+norm
+
+# where the resulting p-value indicates that the residuals are not normally distributed. 
+
+resid <- residuals(var.fit.1)
+par(mfrow = c(1, 1))
+plot.ts(resid[, 1])
+plot.ts(resid[, 2])
+plot.ts(resid[, 3])
+
+plot.ts(resid)
+# The Skewness is not normal
+```
+
+```{r}
+#lastly to test for the structural break in the residuals we can apply a CUSUM test.`
+require(vars)
+bv.cusum <- stability(var.fit.1, type = "OLS-CUSUM")
+plot(bv.cusum)
+# where there does not appear to be a break in the respective confidence intervals.
+```
+
+```{r}
+require(vars)
+#impresp <- irf(var.fit.1)
+#plot(impresp)
+
+irf.tour <- irf(var.fit.1, response = "tourists", n.ahead = 12, boot = TRUE)
+plot(irf.tour)
+# Forecast variance decomposition estimates the contribution of a shock in each variable to the response in both variables.
+```
+
+
+
+```{r}
+# To generate the forecast error variance decompositions.
+plot(fevd(var.fit.1))
+vardec <- fevd(var.fit.1, n.ahead = 12)
+plot(vardec)
+
+# where we note that temperature is only determined by temperature shocks, while tourists are influenced by temperature shock to some degree. Exchange rates is determined by exchange rate shocks and by tourists shocks to a certain degree.
+```
+
+
+
+```{r}
+# Check rediduals
+
+#resid(var.fit.1)
+residuals(var.fit.1)
+acf(residuals(var.fit.1))
+pacf(residuals(var.fit.1))
+
+
+#acf(residuals(var.fit.1)[,1])
+#acf(residuals(var.fit.1)[,2])
+#acf(residuals(var.fit.1)[,3])
+
+
+#pacf(residuals(var.fit.1)[,1])
+#pacf(residuals(var.fit.1)[,2])
+#pacf(residuals(var.fit.1)[,3])
+
+residuals(var.fit.1)
+residuals(var.fit.1)[,1]
+plot(residuals(var.fit.1))
+
+# It looks good for a residual ACF. 
+
+#var.fit.1$info
+#summary(var.fit.1.aic)
+```
+
+
+```{r}
+# Testing Causation using Granger’s Causality Test
+# The basis behind VAR is that each of the time series in the system influences each other.To find out this phenomena more accurately, we do a Granger Causality Test.
+
+# We are then able to test for Granger causality, where we note that the null hypothesis of no Granger causality is dismissed in ALL directions.
+
+cause.tour <- causality(var.fit.1, cause = "tourists")
+cause.tour
+
+cause.exch <- causality(var.fit.1, cause = "average.exchange.rate")
+cause.exch
+
+
+cause.temp <- causality(var.fit.1, cause = "average.temperature")
+cause.temp
+
+# Null hypothesis is that the coefficients of past values of variable y in the regression equation is zero. From the above results, the null hypotheisis is NOT rejected. X isn't causes Y.
+
+# If a given p-value is < significance level (0.05), then, the corresponding X series (column) causes the Y (row).
+# "If two or more time-series are cointegrated, then there must be Granger causality between them - either one-way or in both directions. However, the converse is not true."
+# The resulting P value is larger, which accept the null hypothesis, and granger causality is not true.
+```
+
+
+```{r, include=FALSE}
+# To generate impulse response functions to describe the reponse of interest rate to other shocks, we proceed as follows:
+require(vars)
+irf.tour <- irf(var.fit.1, response = "tourists", n.ahead = 12, boot = TRUE)
+plot(irf.tour)
+
+irf.exch <- irf(var.fit.1, response = "average.exchange.rate", n.ahead = 12, boot = TRUE)
+plot(irf.exch)
+
+irf.temp <- irf(var.fit.1, response = "average.temperature", n.ahead = 12, boot = TRUE)
+plot(irf.temp)
+```
+
+ 
+
+```{r}
+forcast.var = forecast(var.fit.1,h =12)
+
+plot(forcast.var)
+plot(Test)
+summary(forcast.var)
+```
+
+
+```{r,include=FALSE}
+# Check accuracy
+#require(forecast)
+accuracy(var.fit.1$varresult$tourists)
+accuracy(forcast.var$forecast$tourists, Test[,1])
+```

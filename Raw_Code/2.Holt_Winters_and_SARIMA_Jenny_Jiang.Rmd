@@ -1,0 +1,269 @@
+---
+title: "Thai_tourism"
+author: "Jingyun Jiang"
+date: "7/16/2021"
+output: html_document
+---
+### Set up
+```{r}
+suppressMessages(library(TSA))
+suppressMessages(library(ggplot2))
+suppressMessages(library(urca))
+suppressMessages(library(forecast))
+suppressMessages(library(reshape))
+suppressMessages(library(tseries))
+```
+
+### 1. Load Data and select nationality = "USA"
+1). Load dataset
+```{r}
+dataPath1 <- "C:/Users/jiang/Desktop/Dataset/Time_Series/Final_Project/thaitourism2"
+thai <- read.csv(paste(dataPath1,'thaitourism2.csv',sep = '/'), header = TRUE, sep = ',')
+head(thai)
+```
+
+2). Subset the data of USA
+```{r}
+thai_sub <- thai[c('year', 'nationality', 'tourists')]
+usa_all <- subset(thai_sub, nationality == 'USA')
+head(usa_all)
+```
+
+### 2. Split train and test set
+
+1). Split train and test set
+```{r}
+usa_raw <- sapply(usa_all['tourists'], as.numeric)
+usa <- ts(usa_raw, start = c(2010,1), frequency = 12)
+
+train <- ts(usa[1:72], start = c(2010,1), frequency = 12)
+test <- ts(usa[73:84], start = c(2016,1), frequency = 12)
+```
+
+2). Plot the training data
+```{r}
+tsdisplay(usa, main = "Number of the American tourists visiting Thailand", xlab = "Year", ylab = "Number of tourists")
+```
+
+3). Decompose the training set
+```{r}
+fit_mult <- decompose(usa, type = 'multiplicative')
+plot(fit_mult)
+```
+
+```{r}
+fit_mult <- decompose(train, type = 'additive')
+plot(fit_mult)
+```
+
+4). Periodogram
+```{r}
+temp <- periodogram(train)
+max_freq <- temp$freq[which.max(temp$spec)]
+seasonality <- 1/max_freq
+seasonality
+```
+```{r}
+temp$freq
+```
+
+```{r}
+1/temp$freq[1]
+1/temp$freq[2]
+1/temp$freq[3]
+1/temp$freq[4]
+1/temp$freq[12]
+1/temp$freq[18]
+1/temp$freq[24]
+```
+
+## Holt-Winter
+### 3. Fit Holt-Winter exponential smoothing method
+1). Holt-Winter method - Multiplicative
+
+a. Fit the hw multiplicative with dampen
+```{r}
+fit_hw <- hw(train, h=12, seasonal = 'mult')
+summary(fit_hw)
+```
+
+b. Plot the forecast
+```{r}
+autoplot(usa) + 
+  autolayer(fit_hw$mean, series = "forecasted value") +
+  ggtitle("Forecasts for monthly number of tourists in Thailand - Holt-Winter Multiplicative") +
+  xlab("Year") + ylab("Number of tourists")
+```
+
+c. Check Residuals
+```{r}
+checkresiduals((fit_hw))
+```
+
+Basd on the result of Ljung-Box test, the null hypothesis should be rejected. This mean there is still autocorrelation in the residuals.
+
+d. Check accuracy
+```{r}
+accuracy(fit_hw$mean, test)
+```
+
+2). Holt-Winter - Additive
+
+a. Fit the hw additive with dampen 
+```{r}
+fit_hw2 <- hw(train, h=12, seasonal = 'additive')
+summary(fit_hw2)
+```
+
+b. Plot the forecast
+```{r}
+win.graph(width=12, height=6,pointsize=12)
+autoplot(usa) + 
+  autolayer(fit_hw2$mean, series = "forecasted value") +
+  ggtitle("Forecasts for monthly number of tourists in Thailand - Holt-Winter Additive") +
+  xlab("Year") + ylab("Number of tourists")
+```
+
+c. Check residuals
+```{r}
+checkresiduals(fit_hw2)
+```
+
+Reject null hypothesis -> The residuals are still not independently distributed
+
+d. Check accuracy
+```{r}
+accuracy(fit_hw2$mean, test)
+```
+
+## SARIMA
+### Box-Cox Transformation
+```{r}
+lda <- BoxCox.lambda(train)
+lda
+```
+
+
+```{r}
+train_new <- BoxCox(train, lda)
+tsdisplay(train_new)
+```
+
+### Detrend and Deseasonality
+1). Is the transformed data stationary?
+```{r}
+kpss.test(train_new)
+```
+
+The p-value of KPSS test is smaller than the significant level of 0.05. We have to reject the null hypothesis and thus conclude that the data is not stationary. Certain detrend and deseasonality method should be applied
+
+2). Apply seasonal differencing
+```{r}
+train_seadiff <- diff(train_new, lag = 12)
+tsdisplay((train_seadiff))
+```
+
+3). Apply nonseasonal differencing
+```{r}
+train_sea_diff <- diff(train_seadiff, lag = 1)
+tsdisplay(train_sea_diff)
+```
+
+4). Check stationarity again
+```{r}
+kpss.test(train_sea_diff)
+```
+
+Now the data become stationary.
+
+### Build ARIMA(p,d,q)(P,D,Q)[s]
+1). Model 1: Let the auto.arima() function determine the best order of non-seasonal and seasonal differencing
+```{r}
+arima1 <- auto.arima(train, trace = TRUE, lambda = lda)
+arima1
+```
+
+2). Set the order of seasonal differencing d to 1 and D to 1
+```{r}
+arima2 <- auto.arima(train, d = 1, D = 1, trace = TRUE, lambda = lda)
+arima2
+```
+
+3). Report the resulting p, d, q, P, D, Q, s and the coefficients values for all cases and compare their AICc and BIC values
+```{r}
+coeff1 <- data.frame(arima1$coef)
+coeff1$model <- "ARIMA(1,0,0)(2,1,0)[12] with drift"
+
+coeff2 <- data.frame(arima2$coef)
+coeff2$model <- "ARIMA(0,1,1)(0,1,1)[12]"
+
+coeff1
+coeff2
+```
+
+```{r}
+models <- data.frame(arima1[c("aicc", "bic")])
+models <- rbind(models, data.frame(arima2[c("aicc", "bic")]))
+models$model <- c("ARIMA(1,0,0)(2,1,0)[12] with drift", "ARIMA(0,1,1)(0,1,1)[12]")
+models
+```
+
+### Plot the residuals
+1). Check the residual of ARIMA(1,0,0)(2,1,0)[12] with drift
+```{r}
+checkresiduals(arima1)
+```
+
+2). Check the residual of ARIMA(0,1,1)(0,1,1)[12]
+```{r}
+checkresiduals(arima2)
+```
+
+### Plot forecast
+1). ARIMA(1,0,0)(2,1,0)[12] with drift
+```{r}
+forecast1 <- forecast(arima1, h=12)
+forecast1_ts <- ts(forecast1$mean, start = c(2016, 1), frequency = 12)
+```
+
+
+```{r}
+autoplot(usa) + 
+  autolayer(forecast1_ts, series = "forecasted value") +
+  ggtitle("Forecasts for monthly number of tourists in Thailand - ARIMA(1,0,0)(2,1,0)[12] with drift") +
+  xlab("Year") + ylab("Number of tourists")
+```
+
+2). ARIMA(0,1,1)(0,1,1)[12]
+```{r}
+forecast2 <- forecast(arima2, h=12)
+forecast2_ts <- ts(forecast2$mean, start = c(2016, 1), frequency = 12)
+```
+
+```{r}
+autoplot(usa) + 
+  autolayer(forecast2_ts, series = "forecasted value") +
+  ggtitle("Forecasts for monthly number of tourists in Thailand - ARIMA(0,1,1)(0,1,1)[12]") +
+  xlab("Year") + ylab("Number of tourists")
+```
+
+### Check accuracy
+```{r}
+acc_arima1 <- accuracy(forecast1_ts, test)
+acc_arima1
+```
+
+```{r}
+acc_arima2 <- accuracy(forecast2_ts, test)
+acc_arima2
+```
+
+
+
+
+
+
+
+
+
+
