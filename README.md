@@ -25,7 +25,7 @@ Final Presentation: This folder contains the final presentation
 # Structure of the code
 In this analysis, we used different approaches:
 
-Univariate Analysis
+## Univariate Analysis
 
 Seasonal Naive Method - setting up baseline performance
 
@@ -36,7 +36,7 @@ sARIMA
 Prophet
 
 
-Multivariate Analysis
+## Multivariate Analysis
 
 Regression with Arima Errors
 
