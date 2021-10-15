@@ -6,8 +6,11 @@ Professor: Shaddy Abado
 
 Team:
 Xiaoqin Fan: xiaoqin@uchicago.edu
+
 Zheyu Han: zheyu@uchicago.edu
+
 Jenny Jiang: jejiang@uchicago.edu
+
 Ali Mansour: ali.mansour@uchospitals.edu
 
 # Project Description
