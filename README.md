@@ -4,6 +4,14 @@ This repository contains materials for MSCA 31006 Time Series Analysis and Forec
 
 Professor: Shaddy Abado
 
+# Team Members
+Xiaoqin Fan: xiaoqin@uchicago.edu
+
+Zheyu Han: zheyu@uchicago.edu
+
+Jenny Jiang: jejiang@uchicago.edu
+
+Ali Mansour: ali.mansour@uchospitals.edu
 
 # Project Description
 Foreign tourists entering Thailand make a major contribution to the Thai economy. Identifying the recent trends and forecasting expected numbers of tourists in the near future enable the Thai government to better attract tourists and allocate its resources. 
@@ -31,12 +39,3 @@ Regression with Arima Errors
 Vector Autoregression (VAR)
 
 Long Short-Term Memory (LSTM)
-
-# Team Members
-Xiaoqin Fan: xiaoqin@uchicago.edu
-
-Zheyu Han: zheyu@uchicago.edu
-
-Jenny Jiang: jejiang@uchicago.edu
-
-Ali Mansour: ali.mansour@uchospitals.edu
