@@ -4,7 +4,7 @@ This repository contains materials for MSCA 31006 Time Series Analysis and Forec
 
 Professor: Shaddy Abado
 
-# Team Members
+# Team
 Xiaoqin Fan: xiaoqin@uchicago.edu
 
 Zheyu Han: zheyu@uchicago.edu
