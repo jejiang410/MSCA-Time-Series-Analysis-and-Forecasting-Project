@@ -19,12 +19,12 @@ Foreign tourists entering Thailand make a major contribution to the Thai economy
 In this project, we worked with Thai tourism data from data.world. Specifically, we focused on the tourists from the United States who visited Thailand. Using different time series models, we tried to predict the number of tourists from the United States.
 
 # Data
-We had access to the Thai tourism data, which starts from 2010 to 2016 (monthly data)
-(https://data.world/payapdatasci/thai-tourism)
+We had access to the Thai tourism data, which starts from 2010 to 2016 (monthly data).
+Supplementary data includes currency (USD vs. Thai Baht) and temperature data. Both are monthly data.
 
 # Structure of the repository
-Raw Code: This folder includes the R and Python code for time series models
-Final Presentation: This folder contains the final presentation
+Raw Code: This folder includes the R and Python code for time series models.
+Final Presentation: This folder contains the final presentation.
 
 # Structure of the code
 In this analysis, we used different approaches, such as:
