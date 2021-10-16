@@ -20,6 +20,7 @@ In this project, we worked with Thai tourism data from data.world. Specifically,
 
 # Data
 We had access to the Thai tourism data, which starts from 2010 to 2016 (monthly data)
+(https://data.world/payapdatasci/thai-tourism)
 
 # Structure of the repository
 Raw Code: This folder includes the R and Python code for time series models
